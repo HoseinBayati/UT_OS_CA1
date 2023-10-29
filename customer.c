@@ -46,11 +46,11 @@ int main(int argc, char const *argv[])
 {
     int fd, sock;
     char buff[1024] = {0};
-    char *username = sign_in();
+    // char *username = sign_in();
 
     fd = connectServer(8080);
 
-    // Broadcasting setup
+    // setup broadcast (take from restaurants)
     int broadcast = 1, opt = 1;
     char buffer[1024] = {0};
     struct sockaddr_in bc_address;

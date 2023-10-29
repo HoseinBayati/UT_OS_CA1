@@ -8,6 +8,29 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 
+void broadcast_to_restaurants()
+{
+    char buffer[1024] = {0};
+    // char buffer[1024] = "I'm a supplier!\n";
+
+    int sock, broadcast = 1, opt = 1;
+    struct sockaddr_in bc_address;
+
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    bc_address.sin_family = AF_INET;
+    bc_address.sin_port = htons(3001);
+    bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
+
+    bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+
+    read(0, buffer, 1024);
+    int a = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *)&bc_address, sizeof(bc_address));
+    memset(buffer, 0, 1024);
+}
+
 int setupServer(int port)
 {
     struct sockaddr_in address;
@@ -59,7 +82,7 @@ int main(int argc, char const *argv[])
     char buffer[1024] = {0};
     fd_set master_set, working_set;
 
-    char *username = sign_in();
+    // char *username = sign_in();
 
     server_fd = setupServer(3000);
 
@@ -68,6 +91,9 @@ int main(int argc, char const *argv[])
     FD_SET(server_fd, &master_set);
 
     write(1, "Server is running\n", 18);
+
+    // set up broadcast  -  announce to everyone that there is a new supplier
+    broadcast_to_restaurants();
 
     while (1)
     {
