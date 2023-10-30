@@ -44,27 +44,12 @@ int listen_to_supplier_broadcasts()
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     bc_address.sin_family = AF_INET;
-    bc_address.sin_port = htons(3001);
+    bc_address.sin_port = htons(8000);
     bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
 
     return sock;
-}
-
-char *sign_in()
-{
-    char *username = (char *)malloc(1024 * sizeof(char));
-    if (username == NULL)
-    {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(1);
-    }
-
-    printf("Please enter your username: ");
-    scanf("%s", username);
-    printf("\nWelcome %s!\nYou are registered as a restaurant now  :)\n\n", username);
-    return username;
 }
 
 int connectServer(int port)
@@ -116,6 +101,92 @@ int acceptClient(int server_fd)
     return client_fd;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void start_working()
+{
+    printf("start working\n");
+}
+void break_command()
+{
+    printf("break\n");
+}
+void show_ingredients()
+{
+    printf("show ingredients\n");
+}
+void show_recipes()
+{
+    printf("show recipes\n");
+}
+void show_suppliers()
+{
+    printf("show suppliers\n");
+}
+void request_ingredient()
+{
+    printf("request ingredient\n");
+}
+void show_requests()
+{
+    printf("show requests\n");
+}
+void answer_request()
+{
+    printf("answer request\n");
+}
+void show_sales_history()
+{
+    printf("show sales history\n");
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void command_detector(char *username, char *command)
+{
+    if (strcmp(command, "start working\n") == 0)
+        start_working();
+    else if (strcmp(command, "break\n") == 0)
+        break_command();
+    else if (strcmp(command, "show ingredients\n") == 0)
+        show_ingredients();
+    else if (strcmp(command, "show recipes\n") == 0)
+        show_recipes();
+    else if (strcmp(command, "show suppliers\n") == 0)
+        show_suppliers();
+    else if (strcmp(command, "request ingredient\n") == 0)
+        request_ingredient();
+    else if (strcmp(command, "show requests\n") == 0)
+        show_requests();
+    else if (strcmp(command, "answer request\n") == 0)
+        answer_request();
+    else if (strcmp(command, "show sales history\n") == 0)
+        show_sales_history();
+    else
+        printf("what's this jibberish\n");
+}
+
+char *sign_in()
+{
+    char *username = (char *)malloc(1024 * sizeof(char));
+    if (username == NULL)
+    {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
+
+    printf("Please enter your username: ");
+    scanf("%s", username);
+    printf("\nWelcome %s!\nYou are registered as a restaurant now  :)\n\n", username);
+    return username;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char const *argv[])
 {
     int self_server_fd, new_socket, max_sd, supplier_fd;
@@ -127,6 +198,7 @@ int main(int argc, char const *argv[])
     supplier_fd = connectServer(3000);
     // set up the current server for the customers to connect
     self_server_fd = setupServer(8080);
+    // self_server_fd = 10;
 
     FD_ZERO(&master_set);
     max_sd = self_server_fd;
@@ -136,6 +208,7 @@ int main(int argc, char const *argv[])
     write(1, "Server is running\n", 18);
 
     // char *username = sign_in();
+    char *username = "restaurant";
 
     // set up broadcast  -  announce to everyone that there is a new restaurant
     int broad_sock = broadcast_to_customers();
@@ -155,7 +228,6 @@ int main(int argc, char const *argv[])
         {
             if (FD_ISSET(i, &working_set))
             {
-
                 if (i == self_server_fd)
                 { // handle new client wanting to connect to restaurant server
                     new_socket = acceptClient(self_server_fd);
@@ -164,12 +236,13 @@ int main(int argc, char const *argv[])
                         max_sd = new_socket;
                     printf("New client connected. fd = %d\n", new_socket);
                 }
-
                 if (i == STDIN_FILENO)
                 { // handle an input from the command line (like sending it to a supplier or anything)
                     char std_in_buffer[1024];
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
-                    send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
+                    char *command = std_in_buffer;
+                    command_detector(username, command);
+                    // send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
                     memset(std_in_buffer, 0, 1024);
                 }
                 else if (i == suppliers_sock)

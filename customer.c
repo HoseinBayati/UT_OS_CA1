@@ -7,6 +7,19 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <stdlib.h>
+#include <string.h>
+#include <json-c/json.h>
+
+typedef struct
+{
+    char *name;
+    char *port;
+} Restaurant;
+
+int restaurants_count = 10;
+
+Restaurant restaurants[10];
 
 int connectServer(int port)
 {
@@ -27,6 +40,97 @@ int connectServer(int port)
     return fd;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void fill_restaurants()
+{
+    for (int i = 0; i < 10; i++)
+    {
+        Restaurant resi;
+        char *name = "resi";
+        char *port = "3000";
+        resi.name = name;
+        resi.port = port;
+        restaurants[i] = resi;
+    }
+}
+
+void show_restaurants()
+{
+    fill_restaurants();
+    printf("\n--------------------\n");
+    printf("username/port\n");
+    for (int i = 0; i < restaurants_count; i++)
+    {
+        printf("%s %s\n", restaurants[i].name, restaurants[i].port);
+    }
+    printf("--------------------\n");
+}
+
+int show_menu()
+{
+    FILE *fp = fopen("recipes.json", "r");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "Error opening JSON file\n");
+        return 1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char *json_data = (char *)malloc(file_size);
+    fread(json_data, 1, file_size, fp);
+    fclose(fp);
+
+    struct json_object *parsed_json = json_tokener_parse(json_data);
+    free(json_data);
+
+    int i = 0;
+    json_object_object_foreach(parsed_json, recipe_name, recipe_obj)
+    {
+        printf("%d- %s\n", i, recipe_name);
+        i++;
+        struct json_object *ingredients_obj;
+        json_object_object_get_ex(parsed_json, recipe_name, &ingredients_obj);
+
+        json_object_object_foreach(ingredients_obj, ingredient_name, quantity_obj)
+        {
+            int quantity = json_object_get_int(quantity_obj);
+            // printf("%s: %d\n", ingredient_name, quantity);
+        }
+
+        // printf("\n");
+    }
+
+    json_object_put(parsed_json);
+
+    return 0;
+}
+
+void order_food()
+{
+    printf("order food\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void command_detector(char *username, char *command)
+{
+    if (strcmp(command, "show restaurants\n") == 0)
+        show_restaurants();
+    else if (strcmp(command, "show menu\n") == 0)
+        show_menu();
+    else if (strcmp(command, "order food\n") == 0)
+        order_food();
+    else
+        printf("what's this jibberish\n");
+}
+
 char *sign_in()
 {
     char *username = (char *)malloc(1024 * sizeof(char));
@@ -42,11 +146,16 @@ char *sign_in()
     return username;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char const *argv[])
 {
     int fd, sock;
     char buff[1024] = {0};
     // char *username = sign_in();
+    char *username = "ali";
 
     fd = connectServer(8080);
 
@@ -83,7 +192,9 @@ int main(int argc, char const *argv[])
         {
             memset(buff, 0, sizeof(buff));
             read(0, buff, sizeof(buff) - 1);
-            send(fd, buff, strlen(buff), 0);
+            char *command = buff;
+            command_detector(username, command);
+            // send(fd, buff, strlen(buff), 0);
         }
 
         // Check if there is a broadcast message to receive

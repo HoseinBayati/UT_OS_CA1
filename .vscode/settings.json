@@ -2,6 +2,13 @@
     "files.associations": {
         "inet.h": "c",
         "socket.h": "c",
-        "time.h": "c"
-    }
+        "time.h": "c",
+        "in.h": "c",
+        "stdlib.h": "c",
+        "ioctl.h": "c",
+        "string.h": "c",
+        "unistd.h": "c",
+        "jansson.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "enabled"
 }

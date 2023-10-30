@@ -21,7 +21,7 @@ void broadcast_to_restaurants()
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     bc_address.sin_family = AF_INET;
-    bc_address.sin_port = htons(3001);
+    bc_address.sin_port = htons(8000);
     bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
@@ -61,6 +61,26 @@ int acceptClient(int server_fd)
     return client_fd;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void answer_request()
+{
+    printf("answer request\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void command_detector(char *username, char *command)
+{
+    if (strcmp(command, "answer request\n") == 0)
+        printf("answer request\n");
+    else
+        printf("what's this jibberish\n");
+}
+
 char *sign_in()
 {
     char *username = (char *)malloc(1024 * sizeof(char));
@@ -76,6 +96,10 @@ char *sign_in()
     return username;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char const *argv[])
 {
     int server_fd, new_socket, max_sd;
@@ -83,12 +107,14 @@ int main(int argc, char const *argv[])
     fd_set master_set, working_set;
 
     // char *username = sign_in();
+    char *username = "supplier1";
 
     server_fd = setupServer(3000);
 
     FD_ZERO(&master_set);
     max_sd = server_fd;
     FD_SET(server_fd, &master_set);
+    FD_SET(STDIN_FILENO, &master_set);
 
     write(1, "Server is running\n", 18);
 
@@ -113,7 +139,14 @@ int main(int argc, char const *argv[])
                         max_sd = new_socket;
                     printf("New client connected. fd = %d\n", new_socket);
                 }
-
+                if (i == STDIN_FILENO)
+                { // handle an input from the command line (like sending it to a supplier or anything)
+                    char std_in_buffer[1024];
+                    fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
+                    char *command = std_in_buffer;
+                    command_detector(username, command);
+                    memset(std_in_buffer, 0, 1024);
+                }
                 else
                 { // client sending msg
                     int bytes_received;
