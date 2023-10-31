@@ -71,23 +71,26 @@ void show_restaurants()
 
 int show_menu()
 {
-    FILE *fp = fopen("recipes.json", "r");
-    if (fp == NULL)
+    int file_fd = open("recipes.json", O_RDONLY);
+    if (file_fd == -1)
     {
         fprintf(stderr, "Error opening JSON file\n");
         return 1;
     }
 
-    fseek(fp, 0, SEEK_END);
-    long file_size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
+    char buff[4096]; // Adjust the buffer size according to your needs
+    memset(buff, 0, sizeof(buff));
+    ssize_t bytes_read = read(file_fd, buff, sizeof(buff) - 1);
+    if (bytes_read == -1)
+    {
+        fprintf(stderr, "Error reading from JSON file\n");
+        close(file_fd);
+        return 1;
+    }
 
-    char *json_data = (char *)malloc(file_size);
-    fread(json_data, 1, file_size, fp);
-    fclose(fp);
+    close(file_fd);
 
-    struct json_object *parsed_json = json_tokener_parse(json_data);
-    free(json_data);
+    struct json_object *parsed_json = json_tokener_parse(buff);
 
     int i = 0;
     json_object_object_foreach(parsed_json, recipe_name, recipe_obj)
@@ -113,6 +116,16 @@ int show_menu()
 
 void order_food()
 {
+    // char *food_name, restaurant_port;
+    // printf("name of food: ");
+    // scanf("%s", food_name);
+    // printf("restaurant port: ");
+    // scanf("%s", restaurant_port);
+    // printf("waiting for the restaurant's response\n");
+    // send(restaurant_port, food_name, strlen(food_name), 0);
+    // recv(restaurant_port, food_name, strlen(food_name), 0);
+    // Customer -> notify -> (<name> Restaurant accepted and your food is ready!) or
+    // (<name> Restaurant denied and cry about it!) or (Time out!)
     printf("order food\n");
 }
 
