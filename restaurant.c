@@ -9,8 +9,9 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <stdbool.h>
 
-int broadcast_to_customers()
+int broadcast_start_working()
 {
     char buffer[1024] = {0};
     // char buffer[1024] = "I'm a restaurant!\n";
@@ -28,12 +29,16 @@ int broadcast_to_customers()
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
 
     read(0, buffer, 1024);
+    printf("start working buffer: %s\n", buffer);
+
     int a = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *)&bc_address, sizeof(bc_address));
+    printf("%d\n", a);
+
     memset(buffer, 0, 1024);
     return sock;
 }
 
-int listen_to_supplier_broadcasts()
+int listen_to_broadcasts()
 {
     int sock;
     int broadcast = 1, opt = 1;
@@ -44,7 +49,7 @@ int listen_to_supplier_broadcasts()
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     bc_address.sin_family = AF_INET;
-    bc_address.sin_port = htons(8000);
+    bc_address.sin_port = htons(3001);
     bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
@@ -105,9 +110,10 @@ int acceptClient(int server_fd)
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-void start_working()
+bool start_working()
 {
-    printf("start working\n");
+    printf("start working 1\n");
+    broadcast_start_working();
 }
 void break_command()
 {
@@ -141,28 +147,31 @@ void show_sales_history()
 {
     printf("show sales history\n");
 }
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 void command_detector(char *username, char *command)
 {
+    bool res_is_open = false;
+
     if (strcmp(command, "start working\n") == 0)
-        start_working();
-    else if (strcmp(command, "break\n") == 0)
+        res_is_open = start_working();
+    else if (res_is_open && strcmp(command, "break\n") == 0)
         break_command();
-    else if (strcmp(command, "show ingredients\n") == 0)
+    else if (res_is_open && strcmp(command, "show ingredients\n") == 0)
         show_ingredients();
-    else if (strcmp(command, "show recipes\n") == 0)
+    else if (res_is_open && strcmp(command, "show recipes\n") == 0)
         show_recipes();
-    else if (strcmp(command, "show suppliers\n") == 0)
+    else if (res_is_open && strcmp(command, "show suppliers\n") == 0)
         show_suppliers();
-    else if (strcmp(command, "request ingredient\n") == 0)
+    else if (res_is_open && strcmp(command, "request ingredient\n") == 0)
         request_ingredient();
-    else if (strcmp(command, "show requests\n") == 0)
+    else if (res_is_open && strcmp(command, "show requests\n") == 0)
         show_requests();
-    else if (strcmp(command, "answer request\n") == 0)
+    else if (res_is_open && strcmp(command, "answer request\n") == 0)
         answer_request();
-    else if (strcmp(command, "show sales history\n") == 0)
+    else if (res_is_open && strcmp(command, "show sales history\n") == 0)
         show_sales_history();
 }
 
@@ -190,22 +199,22 @@ int main(int argc, char const *argv[])
     // connect to a supplier  -  connect to the target server
     supplier_fd = connectServer(3000);
     // set up the current server for the customers to connect
-    self_server_fd = setupServer(atoi(port));
-    // self_server_fd = 10;
+    // self_server_fd = setupServer(atoi(port));
+    self_server_fd = 10;
 
     FD_ZERO(&master_set);
     max_sd = self_server_fd;
-    FD_SET(self_server_fd, &master_set);
+    // FD_SET(self_server_fd, &master_set);
     FD_SET(STDIN_FILENO, &master_set);
 
     write(1, "Server is running\n", 18);
 
     // set up broadcast  -  announce to everyone that there is a new restaurant
-    int broad_sock = broadcast_to_customers();
+    // int broad_sock = broadcast_to_customers();
 
     // setup broadcast (take from suppliers)
     // int suppliers_sock = broad_sock;
-    int suppliers_sock = listen_to_supplier_broadcasts();
+    int suppliers_sock = listen_to_broadcasts();
     FD_SET(suppliers_sock, &master_set);
     ////////////////////////////////////////
 

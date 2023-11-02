@@ -45,6 +45,25 @@ Restaurant restaurants[10];
 //     return sock;
 // }
 
+int listen_to_broadcasts()
+{
+    int sock;
+    int broadcast = 1, opt = 1;
+    struct sockaddr_in bc_address;
+
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    bc_address.sin_family = AF_INET;
+    bc_address.sin_port = htons(8000);
+    bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
+
+    bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+
+    return sock;
+}
+
 int connectServer(int port)
 {
     int fd;
@@ -170,7 +189,6 @@ int show_menu()
 void timeout_handler(int signum)
 {
     printf("no response from restaurant. connection timeout.\n");
-    exit(EXIT_FAILURE);
 }
 
 void order_food()
@@ -253,14 +271,18 @@ int main(int argc, char const *argv[])
 
     // set up the current server for the customers to connect
     self_server_fd = setupServer(atoi(port));
-    // self_server_fd = 10;
 
     FD_ZERO(&master_set);
-    max_sd = self_server_fd;
     FD_SET(self_server_fd, &master_set);
     FD_SET(STDIN_FILENO, &master_set);
 
-    write(1, "Server is running\n", 18);
+    int broadcast_listen_fd = listen_to_broadcasts();
+    FD_SET(broadcast_listen_fd, &master_set);
+
+    max_sd = broadcast_listen_fd;
+
+    char *welcome_message = "Welcome! You're all set.\n";
+    write(1, welcome_message, strlen(welcome_message));
 
     // set up broadcast  -  announce to everyone that there is a new restaurant
     // int broad_sock = broadcast_to_customers();
@@ -290,6 +312,13 @@ int main(int argc, char const *argv[])
                     command_detector(username, command);
                     // send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
                     memset(stdin_buffer, 0, 1024);
+                }
+                else if (i == broadcast_listen_fd)
+                {
+                    char message[1024] = {0};
+                    recv(broadcast_listen_fd, message, 1024, 0);
+                    printf("%s\n", message);
+                    memset(message, 0, 1024);
                 }
                 else
                 { // handle a client sending message

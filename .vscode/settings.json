@@ -9,7 +9,8 @@
         "string.h": "c",
         "unistd.h": "c",
         "jansson.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "random": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }
