@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <json-c/json.h>
 
 typedef struct
@@ -20,6 +21,29 @@ typedef struct
 int restaurants_count = 10;
 
 Restaurant restaurants[10];
+
+// int broadcast_to_customers()
+// {
+//     char buffer[1024] = {0};
+//     // char buffer[1024] = "I'm a restaurant!\n";
+//     int sock, broadcast = 1, opt = 1;
+//     struct sockaddr_in bc_address;
+
+//     sock = socket(AF_INET, SOCK_DGRAM, 0);
+//     setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+//     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+//     bc_address.sin_family = AF_INET;
+//     bc_address.sin_port = htons(8000);
+//     bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
+
+//     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+
+//     read(0, buffer, 1024);
+//     int a = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *)&bc_address, sizeof(bc_address));
+//     memset(buffer, 0, 1024);
+//     return sock;
+// }
 
 int connectServer(int port)
 {
@@ -38,6 +62,36 @@ int connectServer(int port)
     }
 
     return fd;
+}
+
+int setupServer(int port)
+{
+    struct sockaddr_in address;
+    int server_fd;
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    int opt = 1;
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(port);
+
+    bind(server_fd, (struct sockaddr *)&address, sizeof(address));
+
+    listen(server_fd, 4);
+
+    return server_fd;
+}
+
+int acceptClient(int server_fd)
+{
+    int client_fd;
+    struct sockaddr_in client_address;
+    int address_len = sizeof(client_address);
+    client_fd = accept(server_fd, (struct sockaddr *)&client_address, (socklen_t *)&address_len);
+
+    return client_fd;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +159,6 @@ int show_menu()
             int quantity = json_object_get_int(quantity_obj);
             // printf("%s: %d\n", ingredient_name, quantity);
         }
-
         // printf("\n");
     }
 
@@ -114,21 +167,57 @@ int show_menu()
     return 0;
 }
 
-void order_food()
+void timeout_handler(int signum)
 {
-    // char *food_name, restaurant_port;
-    // printf("name of food: ");
-    // scanf("%s", food_name);
-    // printf("restaurant port: ");
-    // scanf("%s", restaurant_port);
-    // printf("waiting for the restaurant's response\n");
-    // send(restaurant_port, food_name, strlen(food_name), 0);
-    // recv(restaurant_port, food_name, strlen(food_name), 0);
-    // Customer -> notify -> (<name> Restaurant accepted and your food is ready!) or
-    // (<name> Restaurant denied and cry about it!) or (Time out!)
-    printf("order food\n");
+    printf("no response from restaurant. connection timeout.\n");
+    exit(EXIT_FAILURE);
 }
 
+void order_food()
+{
+    char food_name[50];
+    int res_port;
+    printf("name of food: ");
+    scanf("%s", food_name);
+    printf("restaurant port: ");
+    scanf("%d", &res_port);
+
+    printf("food name: %s, restaurant port: %d\n", food_name, res_port);
+
+    printf("waiting for the restaurant's response\n");
+
+    int res_fd;
+    struct sockaddr_in server_addr;
+
+    signal(SIGALRM, timeout_handler);
+    alarm(10);
+
+    res_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (res_fd == -1)
+    {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(res_port);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    if (connect(res_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
+    {
+        perror("Connection failed");
+        exit(EXIT_FAILURE);
+    }
+
+    send(res_fd, food_name, strlen(food_name), 0);
+    char response[1024];
+    recv(res_fd, response, sizeof(response), 0);
+    printf("Received response from restaurant: %s\n", response);
+
+    close(res_fd);
+    alarm(0);
+}
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -140,23 +229,12 @@ void command_detector(char *username, char *command)
         show_menu();
     else if (strcmp(command, "order food\n") == 0)
         order_food();
-    else
-        printf("what's this jibberish\n");
 }
 
-char *sign_in()
+void sign_in(char *username, char *port)
 {
-    char *username = (char *)malloc(1024 * sizeof(char));
-    if (username == NULL)
-    {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(1);
-    }
-
-    printf("Please enter your username: ");
-    scanf("%s", username);
-    printf("\nWelcome %s!\nYou are registered as a customer now  :))\n\n", username);
-    return username;
+    printf("Enter you preferred username and port please: ");
+    scanf("%s %s", username, port);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,62 +243,74 @@ char *sign_in()
 
 int main(int argc, char const *argv[])
 {
-    int fd, sock;
-    char buff[1024] = {0};
-    // char *username = sign_in();
-    char *username = "ali";
-
-    fd = connectServer(8080);
-
-    // setup broadcast (take from restaurants)
-    int broadcast = 1, opt = 1;
+    char username[50];
+    char port[50];
+    sign_in(username, port);
+    int self_server_fd, new_socket, max_sd;
     char buffer[1024] = {0};
-    struct sockaddr_in bc_address;
 
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    fd_set master_set, working_set;
 
-    bc_address.sin_family = AF_INET;
-    bc_address.sin_port = htons(8000);
-    bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
+    // set up the current server for the customers to connect
+    self_server_fd = setupServer(atoi(port));
+    // self_server_fd = 10;
 
-    bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+    FD_ZERO(&master_set);
+    max_sd = self_server_fd;
+    FD_SET(self_server_fd, &master_set);
+    FD_SET(STDIN_FILENO, &master_set);
 
-    fd_set read_fds;
-    int max_fd;
+    write(1, "Server is running\n", 18);
+
+    // set up broadcast  -  announce to everyone that there is a new restaurant
+    // int broad_sock = broadcast_to_customers();
 
     while (1)
     {
-        FD_ZERO(&read_fds);
-        FD_SET(0, &read_fds);    // Add stdin (user input) to the set
-        FD_SET(sock, &read_fds); // Add broadcasting socket to the set
-        max_fd = (sock > 0) ? sock : 0;
+        working_set = master_set;
+        select(max_sd + 1, &working_set, NULL, NULL, NULL);
 
-        // Wait for activity on any of the monitored file descriptors
-        select(max_fd + 1, &read_fds, NULL, NULL, NULL);
-
-        // Check if there is user input to send
-        if (FD_ISSET(0, &read_fds))
+        for (int i = 0; i <= max_sd; i++)
         {
-            memset(buff, 0, sizeof(buff));
-            read(0, buff, sizeof(buff) - 1);
-            char *command = buff;
-            command_detector(username, command);
-            // send(fd, buff, strlen(buff), 0);
-        }
+            if (FD_ISSET(i, &working_set))
+            {
+                if (i == self_server_fd)
+                { // handle new client wanting to connect to restaurant server
+                    new_socket = acceptClient(self_server_fd);
+                    FD_SET(new_socket, &master_set);
+                    if (new_socket > max_sd)
+                        max_sd = new_socket;
+                    printf("New client connected. fd = %d\n", new_socket);
+                }
+                if (i == STDIN_FILENO)
+                {
+                    char stdin_buffer[1024];
+                    fgets(stdin_buffer, sizeof(stdin_buffer), stdin);
+                    char *command = stdin_buffer;
+                    command_detector(username, command);
+                    // send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
+                    memset(stdin_buffer, 0, 1024);
+                }
+                else
+                { // handle a client sending message
+                    int bytes_received;
+                    bytes_received = recv(i, buffer, 1024, 0);
 
-        // Check if there is a broadcast message to receive
-        if (FD_ISSET(sock, &read_fds))
-        {
-            memset(buffer, 0, 1024);
-            recv(sock, buffer, 1024, 0);
-            printf("%s\n", buffer);
+                    if (bytes_received == 0)
+                    { // EOF
+                        printf("client fd = %d closed\n", i);
+                        close(i);
+                        FD_CLR(i, &master_set);
+                        continue;
+                    }
+
+                    printf("client %d: %s\n", i, buffer);
+
+                    memset(buffer, 0, 1024);
+                }
+            }
         }
     }
-
-    close(fd);
-    close(sock);
 
     return 0;
 }

@@ -1,1 +1,2 @@
 sudo apt-get install libjson-c-dev
+gcc customer.c -o c.out -ljson-c

@@ -164,23 +164,12 @@ void command_detector(char *username, char *command)
         answer_request();
     else if (strcmp(command, "show sales history\n") == 0)
         show_sales_history();
-    else
-        printf("what's this jibberish\n");
 }
 
-char *sign_in()
+void sign_in(char *username, char *port)
 {
-    char *username = (char *)malloc(1024 * sizeof(char));
-    if (username == NULL)
-    {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(1);
-    }
-
-    printf("Please enter your username: ");
-    scanf("%s", username);
-    printf("\nWelcome %s!\nYou are registered as a restaurant now  :)\n\n", username);
-    return username;
+    printf("Enter you preferred username and port please: ");
+    scanf("%s %s", username, port);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -189,6 +178,10 @@ char *sign_in()
 
 int main(int argc, char const *argv[])
 {
+    char username[50];
+    char port[50];
+    sign_in(username, port);
+
     int self_server_fd, new_socket, max_sd, supplier_fd;
     char buffer[1024] = {0};
 
@@ -197,7 +190,7 @@ int main(int argc, char const *argv[])
     // connect to a supplier  -  connect to the target server
     supplier_fd = connectServer(3000);
     // set up the current server for the customers to connect
-    self_server_fd = setupServer(8080);
+    self_server_fd = setupServer(atoi(port));
     // self_server_fd = 10;
 
     FD_ZERO(&master_set);
@@ -206,9 +199,6 @@ int main(int argc, char const *argv[])
     FD_SET(STDIN_FILENO, &master_set);
 
     write(1, "Server is running\n", 18);
-
-    // char *username = sign_in();
-    char *username = "restaurant";
 
     // set up broadcast  -  announce to everyone that there is a new restaurant
     int broad_sock = broadcast_to_customers();

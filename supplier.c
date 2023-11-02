@@ -78,22 +78,14 @@ void command_detector(char *username, char *command)
     if (strcmp(command, "answer request\n") == 0)
         printf("answer request\n");
     else
-        printf("what's this jibberish\n");
+        printf("what's this gibberish\n");
 }
 
-char *sign_in()
+void sign_in(char *username, char *port)
 {
-    char *username = (char *)malloc(1024 * sizeof(char));
-    if (username == NULL)
-    {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(1);
-    }
-
-    printf("Please enter your username: ");
+    printf("Enter you preferred username and port please: ");
     scanf("%s", username);
-    printf("\nWelcome %s!\nYou are registered as a supplier now  :)\n\n", username);
-    return username;
+    scanf("%s", port);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,14 +94,15 @@ char *sign_in()
 
 int main(int argc, char const *argv[])
 {
+    char *username;
+    char *port;
+    sign_in(username, port);
+
     int server_fd, new_socket, max_sd;
     char buffer[1024] = {0};
     fd_set master_set, working_set;
 
-    // char *username = sign_in();
-    char *username = "supplier1";
-
-    server_fd = setupServer(3000);
+    server_fd = setupServer(port);
 
     FD_ZERO(&master_set);
     max_sd = server_fd;
