@@ -1,10 +1,8 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <string.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <stdlib.h>
@@ -12,6 +10,7 @@
 #include <signal.h>
 #include <json-c/json.h>
 #include <stdbool.h>
+#include <termios.h>
 
 typedef struct
 {
@@ -174,6 +173,22 @@ void timeout_handler(int signum)
     printf("- no response from restaurant. connection timeout.\n");
 }
 
+void disable_input_buffering()
+{
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag &= ~ICANON;
+    tcsetattr(STDIN_FILENO, TCSANOW, &t);
+}
+
+void restore_input_buffering()
+{
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag |= ICANON;
+    tcsetattr(STDIN_FILENO, TCSANOW, &t);
+}
+
 void order_food()
 {
     char food_name[50];
@@ -182,6 +197,8 @@ void order_food()
     scanf("%d", &res_port);
     printf("name of food: \n");
     scanf("%s", food_name);
+
+    disable_input_buffering();
 
     char message_to_restaurant[1024];
     char *message_type = "order_food";
@@ -223,6 +240,7 @@ void order_food()
 
     close(res_fd);
     alarm(0);
+    restore_input_buffering();
 }
 
 void command_handler(char *username, char *command)

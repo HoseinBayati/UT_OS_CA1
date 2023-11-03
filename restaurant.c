@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <stdbool.h>
 #include <json-c/json.h>
+#include <termios.h>
 
 typedef struct
 {
@@ -235,6 +236,23 @@ void timeout_handler(int signum)
 {
     printf("- no response from the supplier. connection timeout.\n\n");
 }
+
+void disable_input_buffering()
+{
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag &= ~ICANON;
+    tcsetattr(STDIN_FILENO, TCSANOW, &t);
+}
+
+void restore_input_buffering()
+{
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag |= ICANON;
+    tcsetattr(STDIN_FILENO, TCSANOW, &t);
+}
+
 void request_ingredient()
 {
     char ingredient_name[50];
@@ -246,6 +264,8 @@ void request_ingredient()
     scanf("%s", ingredient_name);
     printf("amount of ingredient: ");
     scanf("%s", ingredient_amount);
+
+    disable_input_buffering();
 
     char message_to_supplier[1024];
     char *message_type = "request_ingredient";
@@ -288,6 +308,7 @@ void request_ingredient()
 
     close(sup_fd);
     alarm(0);
+    restore_input_buffering();
 }
 
 void show_requests()
