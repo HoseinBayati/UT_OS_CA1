@@ -236,6 +236,33 @@ void command_handler(char *username, char *command)
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+void remove_restaurant(char *restaurant_info)
+{
+    char *res_name = strtok(restaurant_info, " ");
+    char *res_port = strtok(NULL, "");
+
+    int found = 0;
+    for (int i = 0; i < restaurants_count; i++)
+    {
+        if (strcmp(all_restaurants[i].name, res_name) == 0 && strcmp(all_restaurants[i].port, res_port) == 0)
+        {
+            found = 1;
+            free(all_restaurants[i].name);
+            free(all_restaurants[i].port);
+
+            all_restaurants[i] = all_restaurants[restaurants_count - 1];
+
+            restaurants_count--;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        printf("Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
+    }
+}
+
 void add_restaurant(char *restaurant_info)
 {
     char *res_name = strtok(restaurant_info, " ");
@@ -258,10 +285,13 @@ void broadcast_handler(char *message)
     if (strcmp(message_type, "new_restaurant") == 0)
     {
         add_restaurant(message_info);
-        printf("New restaurant added: %s - %s\n", all_restaurants[0].name, all_restaurants[0].port);
+        printf("%s Restaurant opened\n", all_restaurants[restaurants_count - 1].name);
     }
-    else if (strcmp(message_type, "show menu") == 0)
-        show_menu();
+    else if (strcmp(message_type, "close_restaurant") == 0)
+    {
+        remove_restaurant(message_info);
+        printf("%s Restaurant closed\n", all_restaurants[restaurants_count - 1].name);
+    }
     else if (strcmp(message_type, "order food") == 0)
         order_food();
 }

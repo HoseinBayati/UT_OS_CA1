@@ -118,9 +118,17 @@ bool start_working(char *self_server_port, char *self_username)
     broadcast_start_working(message);
     return true;
 }
-bool stop_working()
+bool stop_working(char *self_server_port, char *self_username)
 {
-    printf("work halted!\n");
+    char message[1024];
+    char *message_type = "close_restaurant";
+    strcpy(message, message_type);
+    strcat(message, " ");
+    strcat(message, self_username);
+    strcat(message, " ");
+    strcat(message, self_server_port);
+
+    broadcast_start_working(message);
     return false;
 }
 void show_ingredients()
@@ -200,7 +208,7 @@ void command_handler(char *username, char *command, char *self_username, char *s
     else if (*working)
     {
         if (strcmp(command, "break\n") == 0)
-            *working = stop_working();
+            *working = stop_working(self_server_port, self_username);
         else if (strcmp(command, "show ingredients\n") == 0)
             show_ingredients();
         else if (strcmp(command, "show recipes\n") == 0)
