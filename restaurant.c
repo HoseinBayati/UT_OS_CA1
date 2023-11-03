@@ -337,7 +337,7 @@ void answer_request()
 
     printf("customer fd? \n");
     scanf("%d", &customer_fd);
-    printf("your answer ? \n");
+    printf("your answer(yes/no)? \n");
     scanf("%s", answer);
 
     send(customer_fd, answer, strlen(answer), 0);
@@ -513,7 +513,7 @@ void request_handler(int client_fd, char *message)
 
 void sign_in(char *username, char *port)
 {
-    printf("Enter you preferred username and port please: ");
+    printf("Enter you preferred username and port please: \n");
     scanf("%s %s", username, port);
 }
 

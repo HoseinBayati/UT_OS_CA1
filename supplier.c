@@ -73,6 +73,7 @@ bool start_working(char *self_server_port, char *self_username)
     strcat(message, self_server_port);
 
     broadcast_to_restaurants(message);
+    printf("- Supplier started working\n- notifications were broadcasted to restaurants.\n\n");
     return true;
 }
 
@@ -90,25 +91,50 @@ bool stop_working(char *self_server_port, char *self_username)
     return false;
 }
 
-void answer_request()
+void answer_request(int *current_restaurant_fd)
 {
-    printf("answer request\n\n");
+    char answer[3];
+
+    printf("your answer(yes/no)? \n");
+    scanf("%s", answer);
+
+    send(*current_restaurant_fd, answer, strlen(answer), 0);
+    *current_restaurant_fd = -1;
 }
 
-void command_handler(char *username, char *command, char *self_username, char *self_server_port, bool *working)
+void command_handler(char *username, char *command, char *self_username, char *self_server_port, bool *working, int *current_restaurant_fd)
 {
-    if (strcmp(command, "start working\n\n") == 0)
+    if (strcmp(command, "start working\n") == 0)
         *working = start_working(self_server_port, self_username);
     else if (*working)
     {
-        if (strcmp(command, "break\n\n") == 0)
+        if (strcmp(command, "break\n") == 0)
             *working = stop_working(self_server_port, self_username);
-        else if (strcmp(command, "answer request\n\n") == 0)
-            answer_request();
+        else if (strcmp(command, "answer request\n") == 0)
+            answer_request(current_restaurant_fd);
     }
     else
     {
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void request_handler(int client_fd, char *message, int *current_restaurant_fd)
+{
+    char *message_type = strtok(message, " ");
+    char *message_info = strtok(NULL, "");
+
+    if (strcmp(message_type, "request_ingredient") == 0)
+    {
+        if (*current_restaurant_fd == -1)
+            *current_restaurant_fd = client_fd;
+        else
+            printf("redundant request ignored \n");
+    }
+    else
+        printf("- broadcast message received: %s\n\n", message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,6 +160,8 @@ int main(int argc, char const *argv[])
 {
     char self_username[50];
     char self_server_port[50];
+    int current_restaurant_fd = -1;
+
     sign_in(self_username, self_server_port);
 
     int self_server_fd, new_socket, max_sd;
@@ -174,13 +202,15 @@ int main(int argc, char const *argv[])
                     char std_in_buffer[1024];
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
                     char *command = std_in_buffer;
-                    command_handler(self_username, command, self_username, self_server_port, &working);
+                    command_handler(self_username, command, self_username, self_server_port, &working, &current_restaurant_fd);
                     memset(std_in_buffer, 0, 1024);
                 }
                 else
                 {
                     int bytes_received;
-                    bytes_received = recv(i, buffer, 1024, 0);
+                    char request_buffer[1024] = {0};
+
+                    bytes_received = recv(i, request_buffer, 1024, 0);
 
                     if (bytes_received == 0)
                     {
@@ -189,9 +219,10 @@ int main(int argc, char const *argv[])
                         FD_CLR(i, &master_set);
                         continue;
                     }
-
-                    printf("client %d: %s\n\n", i, buffer);
-                    memset(buffer, 0, 1024);
+                    printf("client %d: %s\n\n", i, request_buffer);
+                    if (bytes_received > 0)
+                        request_handler(i, request_buffer, &current_restaurant_fd);
+                    memset(request_buffer, 0, 1024);
                 }
             }
         }
