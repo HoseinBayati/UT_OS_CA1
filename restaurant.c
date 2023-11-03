@@ -94,7 +94,7 @@ int connectServer(int port)
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     if (connect(fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
-    { 
+    {
         printf("- Error in connecting to server\n");
     }
 
@@ -402,7 +402,21 @@ void add_supplier(char *supplier_info)
     printf("%s Supplier added\n", all_suppliers[all_suppliers_length - 1].name);
 }
 
-void broadcast_listen_handler(char *message)
+void announce_working(char *self_server_port, char *self_username)
+{
+    char message[1024];
+    char *message_type = "new_restaurant";
+    strcpy(message, message_type);
+    strcat(message, " ");
+    strcat(message, self_username);
+    strcat(message, " ");
+    strcat(message, self_server_port);
+
+    broadcast_to_customers(message);
+    printf("- broadcasted working state\n\n");
+}
+
+void broadcast_listen_handler(char *message, char *self_username, char *self_server_port, bool *working)
 {
     char *message_type = strtok(message, " ");
     char *message_info = strtok(NULL, "");
@@ -411,6 +425,13 @@ void broadcast_listen_handler(char *message)
         add_supplier(message_info);
     else if (strcmp(message_type, "close_supplier") == 0)
         remove_supplier(message_info);
+    else if (strcmp(message_type, "take_restaurants") == 0)
+    {
+        if (*working)
+        {
+            announce_working(self_server_port, self_username);
+        }
+    }
     else
         printf("- broadcast message received: %s\n\n", message);
 }
@@ -520,7 +541,7 @@ int main(int argc, char const *argv[])
                 {
                     char broadcast_listen_message[1024] = {0};
                     recv(broadcast_listen_fd, broadcast_listen_message, 1024, 0);
-                    broadcast_listen_handler(broadcast_listen_message);
+                    broadcast_listen_handler(broadcast_listen_message, self_username, self_server_port, &working);
                     memset(broadcast_listen_message, 0, 1024);
                 }
                 else

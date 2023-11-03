@@ -11,6 +11,7 @@
 #include <string.h>
 #include <signal.h>
 #include <json-c/json.h>
+#include <stdbool.h>
 
 typedef struct
 {
@@ -21,6 +22,25 @@ typedef struct
 int restaurants_count = 0;
 
 Restaurant all_restaurants[100];
+
+void broadcast_to_restaurants(char *message)
+{
+    int sock, broadcast = 1, opt = 1;
+    struct sockaddr_in bc_address;
+
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    bc_address.sin_family = AF_INET;
+    bc_address.sin_port = htons(8080);
+    bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
+
+    bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+
+    int a = sendto(sock, message, strlen(message), 0, (struct sockaddr *)&bc_address, sizeof(bc_address));
+    memset(message, 0, 1024);
+}
 
 int listen_to_broadcasts()
 {
@@ -286,6 +306,16 @@ void sign_in(char *username, char *port)
     scanf("%s %s", username, port);
 }
 
+bool request_restaurants_list()
+{
+    char message[1024];
+    char *message_type = "take_restaurants";
+    strcpy(message, message_type);
+
+    broadcast_to_restaurants(message);
+    return true;
+}
+
 void say_welcome()
 {
     char *welcome_message = "Welcome! You're all set.\n";
@@ -316,7 +346,7 @@ int main(int argc, char const *argv[])
     FD_SET(broadcast_listen_fd, &master_set);
 
     max_sd = broadcast_listen_fd;
-
+    request_restaurants_list();
     say_welcome();
 
     while (1)
