@@ -12,7 +12,17 @@
 #include <stdbool.h>
 #include <json-c/json.h>
 
-int broadcast_start_working(char *message)
+typedef struct
+{
+    char *name;
+    char *port;
+} Supplier;
+
+int suppliers_count = 0;
+
+Supplier all_suppliers[100];
+
+int broadcast_to_customers(char *message)
 {
     int sock, broadcast = 1, opt = 1;
     struct sockaddr_in bc_address;
@@ -115,7 +125,7 @@ bool start_working(char *self_server_port, char *self_username)
     strcat(message, " ");
     strcat(message, self_server_port);
 
-    broadcast_start_working(message);
+    broadcast_to_customers(message);
     return true;
 }
 bool stop_working(char *self_server_port, char *self_username)
@@ -128,7 +138,7 @@ bool stop_working(char *self_server_port, char *self_username)
     strcat(message, " ");
     strcat(message, self_server_port);
 
-    broadcast_start_working(message);
+    broadcast_to_customers(message);
     return false;
 }
 void show_ingredients()
@@ -179,7 +189,15 @@ int show_recipes()
 }
 void show_suppliers()
 {
-    printf("show suppliers\n");
+    printf("\n--------------------\n");
+    printf("username - port\n");
+
+    for (int i = 0; i < suppliers_count; i++)
+    {
+        printf("%s - %s\n", all_suppliers[i].name, all_suppliers[i].port);
+    }
+
+    printf("--------------------\n");
 }
 void request_ingredient()
 {
@@ -197,9 +215,6 @@ void show_sales_history()
 {
     printf("show sales history\n");
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////
 
 void command_handler(char *username, char *command, char *self_username, char *self_server_port, bool *working)
 {
@@ -228,6 +243,73 @@ void command_handler(char *username, char *command, char *self_username, char *s
     {
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void remove_supplier(char *supplier_info)
+{
+    char *res_name = strtok(supplier_info, " ");
+    char *res_port = strtok(NULL, "");
+
+    int found = 0;
+    for (int i = 0; i < suppliers_count; i++)
+    {
+        if (strcmp(all_suppliers[i].name, res_name) == 0 && strcmp(all_suppliers[i].port, res_port) == 0)
+        {
+            found = 1;
+            free(all_suppliers[i].name);
+            free(all_suppliers[i].port);
+
+            all_suppliers[i] = all_suppliers[suppliers_count - 1];
+
+            suppliers_count--;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        printf("Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
+    }
+}
+
+void add_supplier(char *supplier_info)
+{
+    char *res_name = strtok(supplier_info, " ");
+    char *res_port = strtok(NULL, "");
+
+    all_suppliers[suppliers_count].name = malloc(strlen(res_name) + 1);
+    all_suppliers[suppliers_count].port = malloc(strlen(res_port) + 1);
+
+    strcpy(all_suppliers[suppliers_count].name, res_name);
+    strcpy(all_suppliers[suppliers_count].port, res_port);
+
+    suppliers_count++;
+}
+
+void broadcast_listen_handler(char *message)
+{
+    char *message_type = strtok(message, " ");
+    char *message_info = strtok(NULL, "");
+
+    if (strcmp(message_type, "new_supplier") == 0)
+    {
+        printf("sup start working..\n");
+        add_supplier(message_info);
+        printf("%s Supplier added\n", all_suppliers[suppliers_count - 1].name);
+    }
+    else if (strcmp(message_type, "close_supplier") == 0)
+    {
+        remove_supplier(message_info);
+        printf("%s Supplier closed\n", all_suppliers[suppliers_count - 1].name);
+    }
+    // else if (strcmp(message_type, "order food") == 0)
+    //     order_food();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
 
 void sign_in(char *username, char *port)
 {
@@ -270,10 +352,10 @@ int main(int argc, char const *argv[])
 
     // setup broadcast (take from suppliers)
     // int suppliers_sock = broad_sock;
-    int suppliers_sock = listen_to_broadcasts();
-    FD_SET(suppliers_sock, &master_set);
+    int broadcast_listen_fd = listen_to_broadcasts();
+    FD_SET(broadcast_listen_fd, &master_set);
     ////////////////////////////////////////
-    max_sd = suppliers_sock;
+    max_sd = broadcast_listen_fd;
     bool working = false;
 
     say_welcome();
@@ -301,15 +383,14 @@ int main(int argc, char const *argv[])
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
                     char *command = std_in_buffer;
                     command_handler(self_username, command, self_username, self_server_port, &working);
-                    // send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
                     memset(std_in_buffer, 0, 1024);
                 }
-                else if (i == suppliers_sock)
+                else if (i == broadcast_listen_fd)
                 {
-                    char supplier_message[1024] = {0};
-                    recv(suppliers_sock, supplier_message, 1024, 0);
-                    printf("%s\n", supplier_message);
-                    memset(supplier_message, 0, 1024);
+                    char broadcast_listen_message[1024] = {0};
+                    recv(broadcast_listen_fd, broadcast_listen_message, 1024, 0);
+                    broadcast_listen_handler(broadcast_listen_message);
+                    memset(broadcast_listen_message, 0, 1024);
                 }
                 else
                 { // handle a client sending message

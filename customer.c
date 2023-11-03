@@ -22,29 +22,6 @@ int restaurants_count = 0;
 
 Restaurant all_restaurants[100];
 
-// int broadcast_to_customers()
-// {
-//     char buffer[1024] = {0};
-//     // char buffer[1024] = "I'm a restaurant!\n";
-//     int sock, broadcast = 1, opt = 1;
-//     struct sockaddr_in bc_address;
-
-//     sock = socket(AF_INET, SOCK_DGRAM, 0);
-//     setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
-//     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-//     bc_address.sin_family = AF_INET;
-//     bc_address.sin_port = htons(8000);
-//     bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
-
-//     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
-
-//     read(0, buffer, 1024);
-//     int a = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *)&bc_address, sizeof(bc_address));
-//     memset(buffer, 0, 1024);
-//     return sock;
-// }
-
 int listen_to_broadcasts()
 {
     int sock;
@@ -277,7 +254,7 @@ void add_restaurant(char *restaurant_info)
     restaurants_count++;
 }
 
-void broadcast_handler(char *message)
+void broadcast_listen_handler(char *message)
 {
     char *message_type = strtok(message, " ");
     char *message_info = strtok(NULL, "");
@@ -292,8 +269,6 @@ void broadcast_handler(char *message)
         remove_restaurant(message_info);
         printf("%s Restaurant closed\n", all_restaurants[restaurants_count - 1].name);
     }
-    else if (strcmp(message_type, "order food") == 0)
-        order_food();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -365,15 +340,14 @@ int main(int argc, char const *argv[])
                     fgets(stdin_buffer, sizeof(stdin_buffer), stdin);
                     char *command = stdin_buffer;
                     command_handler(username, command);
-                    // send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
                     memset(stdin_buffer, 0, 1024);
                 }
                 else if (i == broadcast_listen_fd)
                 {
-                    char message[1024] = {0};
-                    recv(broadcast_listen_fd, message, 1024, 0);
-                    broadcast_handler(message);
-                    memset(message, 0, 1024);
+                    char broadcast_listen_message[1024] = {0};
+                    recv(broadcast_listen_fd, broadcast_listen_message, 1024, 0);
+                    broadcast_listen_handler(broadcast_listen_message);
+                    memset(broadcast_listen_message, 0, 1024);
                 }
                 else
                 { // handle a client sending message
