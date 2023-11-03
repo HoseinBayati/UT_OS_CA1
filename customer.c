@@ -18,9 +18,9 @@ typedef struct
     char *port;
 } Restaurant;
 
-int restaurants_count = 10;
+int restaurants_count = 0;
 
-Restaurant restaurants[10];
+Restaurant all_restaurants[100];
 
 // int broadcast_to_customers()
 // {
@@ -117,28 +117,16 @@ int acceptClient(int server_fd)
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-void fill_restaurants()
-{
-    for (int i = 0; i < 10; i++)
-    {
-        Restaurant resi;
-        char *name = "resi";
-        char *port = "3000";
-        resi.name = name;
-        resi.port = port;
-        restaurants[i] = resi;
-    }
-}
-
 void show_restaurants()
 {
-    fill_restaurants();
     printf("\n--------------------\n");
-    printf("username/port\n");
+    printf("username - port\n");
+
     for (int i = 0; i < restaurants_count; i++)
     {
-        printf("%s %s\n", restaurants[i].name, restaurants[i].port);
+        printf("%s - %s\n", all_restaurants[i].name, all_restaurants[i].port);
     }
+
     printf("--------------------\n");
 }
 
@@ -176,9 +164,7 @@ int show_menu()
         json_object_object_foreach(ingredients_obj, ingredient_name, quantity_obj)
         {
             int quantity = json_object_get_int(quantity_obj);
-            // printf("%s: %d\n", ingredient_name, quantity);
         }
-        // printf("\n");
     }
 
     json_object_put(parsed_json);
@@ -208,7 +194,7 @@ void order_food()
     struct sockaddr_in server_addr;
 
     signal(SIGALRM, timeout_handler);
-    alarm(10);
+    alarm(120);
 
     res_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (res_fd == -1)
@@ -236,10 +222,8 @@ void order_food()
     close(res_fd);
     alarm(0);
 }
-////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////
 
-void command_detector(char *username, char *command)
+void command_handler(char *username, char *command)
 {
     if (strcmp(command, "show restaurants\n") == 0)
         show_restaurants();
@@ -248,6 +232,42 @@ void command_detector(char *username, char *command)
     else if (strcmp(command, "order food\n") == 0)
         order_food();
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void add_restaurant(char *restaurant_info)
+{
+    char *res_name = strtok(restaurant_info, " ");
+    char *res_port = strtok(NULL, "");
+
+    all_restaurants[restaurants_count].name = malloc(strlen(res_name) + 1);
+    all_restaurants[restaurants_count].port = malloc(strlen(res_port) + 1);
+
+    strcpy(all_restaurants[restaurants_count].name, res_name);
+    strcpy(all_restaurants[restaurants_count].port, res_port);
+
+    restaurants_count++;
+}
+
+void broadcast_handler(char *message)
+{
+    char *message_type = strtok(message, " ");
+    char *message_info = strtok(NULL, "");
+
+    if (strcmp(message_type, "new_restaurant") == 0)
+    {
+        add_restaurant(message_info);
+        printf("New restaurant added: %s - %s\n", all_restaurants[0].name, all_restaurants[0].port);
+    }
+    else if (strcmp(message_type, "show menu") == 0)
+        show_menu();
+    else if (strcmp(message_type, "order food") == 0)
+        order_food();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
 
 void sign_in(char *username, char *port)
 {
@@ -268,15 +288,15 @@ void say_welcome()
 int main(int argc, char const *argv[])
 {
     char username[50];
-    char port[50];
-    sign_in(username, port);
+    char self_server_port[50];
+    sign_in(username, self_server_port);
     int self_server_fd, new_socket, max_sd;
     char buffer[1024] = {0};
 
     fd_set master_set, working_set;
 
     // set up the current server for the customers to connect
-    self_server_fd = setupServer(atoi(port));
+    self_server_fd = setupServer(atoi(self_server_port));
 
     FD_ZERO(&master_set);
     FD_SET(self_server_fd, &master_set);
@@ -314,7 +334,7 @@ int main(int argc, char const *argv[])
                     char stdin_buffer[1024];
                     fgets(stdin_buffer, sizeof(stdin_buffer), stdin);
                     char *command = stdin_buffer;
-                    command_detector(username, command);
+                    command_handler(username, command);
                     // send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
                     memset(stdin_buffer, 0, 1024);
                 }
@@ -322,7 +342,7 @@ int main(int argc, char const *argv[])
                 {
                     char message[1024] = {0};
                     recv(broadcast_listen_fd, message, 1024, 0);
-                    printf("%s\n", message);
+                    broadcast_handler(message);
                     memset(message, 0, 1024);
                 }
                 else

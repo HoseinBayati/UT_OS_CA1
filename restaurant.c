@@ -12,10 +12,8 @@
 #include <stdbool.h>
 #include <json-c/json.h>
 
-int broadcast_start_working()
+int broadcast_start_working(char *message)
 {
-    char buffer[1024] = {0};
-    // char buffer[1024] = "I'm a restaurant!\n";
     int sock, broadcast = 1, opt = 1;
     struct sockaddr_in bc_address;
 
@@ -29,13 +27,9 @@ int broadcast_start_working()
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
 
-    read(0, buffer, 1024);
-    printf("start working buffer: %s\n", buffer);
+    int a = sendto(sock, message, strlen(message), 0, (struct sockaddr *)&bc_address, sizeof(bc_address));
 
-    int a = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *)&bc_address, sizeof(bc_address));
-    printf("%d\n", a);
-
-    memset(buffer, 0, 1024);
+    memset(message, 0, 1024);
     return sock;
 }
 
@@ -111,14 +105,23 @@ int acceptClient(int server_fd)
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-bool start_working()
+bool start_working(char *self_server_port, char *self_username)
 {
-    printf("start working 1\n");
-    broadcast_start_working();
+    char message[1024];
+    char *message_type = "new_restaurant";
+    strcpy(message, message_type);
+    strcat(message, " ");
+    strcat(message, self_username);
+    strcat(message, " ");
+    strcat(message, self_server_port);
+
+    broadcast_start_working(message);
+    return true;
 }
-void break_command()
+bool stop_working()
 {
-    printf("break\n");
+    printf("work halted!\n");
+    return false;
 }
 void show_ingredients()
 {
@@ -158,9 +161,8 @@ int show_recipes()
         json_object_object_foreach(ingredients_obj, ingredient_name, quantity_obj)
         {
             int quantity = json_object_get_int(quantity_obj);
-            // printf("%s: %d\n", ingredient_name, quantity);
+            printf("       %s: %d\n", ingredient_name, quantity);
         }
-        // printf("\n");
     }
 
     json_object_put(parsed_json);
@@ -191,28 +193,32 @@ void show_sales_history()
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-void command_detector(char *username, char *command)
+void command_handler(char *username, char *command, char *self_username, char *self_server_port, bool *working)
 {
-    bool res_is_open = false;
-
     if (strcmp(command, "start working\n") == 0)
-        res_is_open = start_working();
-    else if (res_is_open && strcmp(command, "break\n") == 0)
-        break_command();
-    else if (res_is_open && strcmp(command, "show ingredients\n") == 0)
-        show_ingredients();
-    else if (res_is_open && strcmp(command, "show recipes\n") == 0)
-        show_recipes();
-    else if (res_is_open && strcmp(command, "show suppliers\n") == 0)
-        show_suppliers();
-    else if (res_is_open && strcmp(command, "request ingredient\n") == 0)
-        request_ingredient();
-    else if (res_is_open && strcmp(command, "show requests\n") == 0)
-        show_requests();
-    else if (res_is_open && strcmp(command, "answer request\n") == 0)
-        answer_request();
-    else if (res_is_open && strcmp(command, "show sales history\n") == 0)
-        show_sales_history();
+        *working = start_working(self_server_port, self_username);
+    else if (*working)
+    {
+        if (strcmp(command, "break\n") == 0)
+            *working = stop_working();
+        else if (strcmp(command, "show ingredients\n") == 0)
+            show_ingredients();
+        else if (strcmp(command, "show recipes\n") == 0)
+            show_recipes();
+        else if (strcmp(command, "show suppliers\n") == 0)
+            show_suppliers();
+        else if (strcmp(command, "request ingredient\n") == 0)
+            request_ingredient();
+        else if (strcmp(command, "show requests\n") == 0)
+            show_requests();
+        else if (strcmp(command, "answer request\n") == 0)
+            answer_request();
+        else if (strcmp(command, "show sales history\n") == 0)
+            show_sales_history();
+    }
+    else
+    {
+    }
 }
 
 void sign_in(char *username, char *port)
@@ -233,9 +239,9 @@ void say_welcome()
 
 int main(int argc, char const *argv[])
 {
-    char username[50];
-    char port[50];
-    sign_in(username, port);
+    char self_username[50];
+    char self_server_port[50];
+    sign_in(self_username, self_server_port);
 
     int self_server_fd, new_socket, max_sd, supplier_fd;
     char buffer[1024] = {0};
@@ -245,7 +251,7 @@ int main(int argc, char const *argv[])
     // connect to a supplier  -  connect to the target server
     supplier_fd = connectServer(3001);
     // set up the current server for the customers to connect
-    self_server_fd = setupServer(atoi(port));
+    self_server_fd = setupServer(atoi(self_server_port));
 
     FD_ZERO(&master_set);
     FD_SET(self_server_fd, &master_set);
@@ -260,6 +266,7 @@ int main(int argc, char const *argv[])
     FD_SET(suppliers_sock, &master_set);
     ////////////////////////////////////////
     max_sd = suppliers_sock;
+    bool working = false;
 
     say_welcome();
 
@@ -285,7 +292,7 @@ int main(int argc, char const *argv[])
                     char std_in_buffer[1024];
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
                     char *command = std_in_buffer;
-                    command_detector(username, command);
+                    command_handler(self_username, command, self_username, self_server_port, &working);
                     // send(supplier_fd, std_in_buffer, strlen(std_in_buffer), 0);
                     memset(std_in_buffer, 0, 1024);
                 }

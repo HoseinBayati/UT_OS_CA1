@@ -73,7 +73,7 @@ void answer_request()
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-void command_detector(char *username, char *command)
+void command_handler(char *username, char *command)
 {
     if (strcmp(command, "answer request\n") == 0)
         printf("answer request\n");
@@ -142,7 +142,7 @@ int main(int argc, char const *argv[])
                     char std_in_buffer[1024];
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
                     char *command = std_in_buffer;
-                    command_detector(username, command);
+                    command_handler(username, command);
                     memset(std_in_buffer, 0, 1024);
                 }
                 else
