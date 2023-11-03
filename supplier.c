@@ -191,7 +191,7 @@ int main(int argc, char const *argv[])
                         max_sd = new_socket;
                     printf("New client connected. fd = %d\n", new_socket);
                 }
-                if (i == STDIN_FILENO)
+                else if (i == STDIN_FILENO)
                 {
                     char std_in_buffer[1024];
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);

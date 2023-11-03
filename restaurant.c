@@ -32,6 +32,16 @@ int all_ingredients_length = 0;
 
 Ingredient all_ingredients[100];
 
+typedef struct
+{
+    char *food_name;
+    int customer_fd;
+} Order;
+
+int all_orders_length = 0;
+
+Order all_orders[100];
+
 int broadcast_to_customers(char *message)
 {
     int sock, broadcast = 1, opt = 1;
@@ -85,7 +95,7 @@ int connectServer(int port)
 
     if (connect(fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     { // checking for errors
-        printf("Error in connecting to server\n");
+        printf("- Error in connecting to server\n");
     }
 
     return fd;
@@ -223,16 +233,15 @@ void show_suppliers()
 
 void timeout_handler(int signum)
 {
-    printf("no response from the supplier. connection timeout.\n");
+    printf("- no response from the supplier. connection timeout.\n");
 }
 void request_ingredient()
 {
-
     char ingredient_name[50];
     char ingredient_amount[50];
-    int res_port;
+    int sup_port;
     printf("supplier port: ");
-    scanf("%d", &res_port);
+    scanf("%d", &sup_port);
     printf("name of ingredient: ");
     scanf("%s", ingredient_name);
     printf("amount of ingredient: ");
@@ -246,50 +255,59 @@ void request_ingredient()
     strcat(message_to_supplier, " ");
     strcat(message_to_supplier, ingredient_amount);
 
-    printf("ingredient name: %s, supplier port: %d, ingredient amount: %s\n", ingredient_name, res_port, ingredient_amount);
+    printf("- waiting for the supplier's response\n");
 
-    printf("waiting for the supplier's response\n");
-
-    int res_fd;
+    int sup_fd;
     struct sockaddr_in server_addr;
 
     signal(SIGALRM, timeout_handler);
     alarm(9);
 
-    res_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (res_fd == -1)
+    sup_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sup_fd == -1)
     {
-        perror("Socket creation failed");
+        perror("- Socket creation failed");
         exit(EXIT_FAILURE);
     }
 
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(res_port);
+    server_addr.sin_port = htons(sup_port);
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    if (connect(res_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
+    if (connect(sup_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
     {
-        perror("Connection failed");
+        perror("- Connection failed");
         exit(EXIT_FAILURE);
     }
 
-    send(res_fd, message_to_supplier, strlen(message_to_supplier), 0);
+    send(sup_fd, message_to_supplier, strlen(message_to_supplier), 0);
     char response[1024];
-    recv(res_fd, response, sizeof(response), 0);
-    printf("Received response from supplier: %s\n", response);
+    recv(sup_fd, response, sizeof(response), 0);
+    printf("- Received response from supplier: %s\n", response);
 
-    close(res_fd);
+    close(sup_fd);
     alarm(0);
 }
+
 void show_requests()
 {
-    printf("show requests\n");
+    printf("\n--------------------\n");
+    printf("food name/customer\n");
+
+    for (int i = 0; i < all_orders_length; i++)
+    {
+        printf("%s %d\n", all_orders[i].food_name, all_orders[i].customer_fd);
+    }
+
+    printf("--------------------\n");
 }
+
 void answer_request()
 {
     printf("answer request\n");
 }
+
 void show_sales_history()
 {
     printf("show sales history\n");
@@ -361,7 +379,7 @@ void remove_supplier(char *supplier_info)
 
     if (!found)
     {
-        printf("Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
+        printf("- Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
     }
     else
     {
@@ -393,8 +411,40 @@ void broadcast_listen_handler(char *message)
         add_supplier(message_info);
     else if (strcmp(message_type, "close_supplier") == 0)
         remove_supplier(message_info);
-    // else if (strcmp(message_type, "order_food") == 0)
-    //     order_food();
+    else
+        printf("- broadcast message received: %s\n\n", message);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void add_order(char *food_name, int customer_fd)
+{
+    all_orders[all_orders_length].food_name = malloc(strlen(food_name) + 1);
+    all_orders[all_orders_length].customer_fd = customer_fd;
+
+    strcpy(all_orders[all_orders_length].food_name, food_name);
+
+    all_orders_length++;
+}
+
+void order_food_handler(char *order_info, int client_fd)
+{
+    char *food_name = strtok(order_info, "");
+
+    add_order(food_name, client_fd);
+    printf("- added order: %s, from customer: %d, to orders queue\n", all_orders[all_orders_length - 1].food_name, all_orders[all_orders_length - 1].customer_fd);
+}
+
+void request_handler(int client_fd, char *message)
+{
+    char *message_type = strtok(message, " ");
+    char *message_info = strtok(NULL, "");
+
+    if (strcmp(message_type, "order_food") == 0)
+        order_food_handler(message_info, client_fd);
+    else
+        printf("- broadcast message received: %s\n\n", message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,9 +506,9 @@ int main(int argc, char const *argv[])
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
                         max_sd = new_socket;
-                    printf("New client connected. fd = %d\n", new_socket);
+                    printf("- New client connected. fd = %d\n", new_socket);
                 }
-                if (i == STDIN_FILENO)
+                else if (i == STDIN_FILENO)
                 {
                     char std_in_buffer[1024];
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
@@ -476,7 +526,9 @@ int main(int argc, char const *argv[])
                 else
                 {
                     int bytes_received;
-                    bytes_received = recv(i, buffer, 1024, 0);
+                    char request_buffer[1024] = {0};
+
+                    bytes_received = recv(i, request_buffer, 1024, 0);
 
                     if (bytes_received == 0)
                     {
@@ -485,10 +537,10 @@ int main(int argc, char const *argv[])
                         FD_CLR(i, &master_set);
                         continue;
                     }
-
-                    printf("client %d: %s\n", i, buffer);
-
-                    memset(buffer, 0, 1024);
+                    printf("client %d: %s\n", i, request_buffer);
+                    if (bytes_received > 0)
+                        request_handler(i, request_buffer);
+                    memset(request_buffer, 0, 1024);
                 }
             }
         }

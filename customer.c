@@ -151,19 +151,26 @@ int show_menu()
 
 void timeout_handler(int signum)
 {
-    printf("no response from restaurant. connection timeout.\n");
+    printf("- no response from restaurant. connection timeout.\n");
 }
 
 void order_food()
 {
     char food_name[50];
     int res_port;
-    printf("name of food: ");
-    scanf("%s", food_name);
     printf("restaurant port: ");
     scanf("%d", &res_port);
+    printf("name of food: ");
+    scanf("%s", food_name);
 
-    printf("waiting for the restaurant's response\n");
+    char message_to_restaurant[1024];
+    char *message_type = "order_food";
+    strcpy(message_to_restaurant, message_type);
+    strcat(message_to_restaurant, " ");
+    strcat(message_to_restaurant, food_name);
+    strcat(message_to_restaurant, " ");
+
+    printf("- waiting for the restaurant's response\n");
 
     int res_fd;
     struct sockaddr_in server_addr;
@@ -174,7 +181,7 @@ void order_food()
     res_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (res_fd == -1)
     {
-        perror("Socket creation failed");
+        perror("- Socket creation failed");
         exit(EXIT_FAILURE);
     }
 
@@ -185,14 +192,14 @@ void order_food()
 
     if (connect(res_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
     {
-        perror("Connection failed");
+        perror("- Connection failed");
         exit(EXIT_FAILURE);
     }
 
-    send(res_fd, food_name, strlen(food_name), 0);
+    send(res_fd, message_to_restaurant, strlen(message_to_restaurant), 0);
     char response[1024];
     recv(res_fd, response, sizeof(response), 0);
-    printf("Received response from restaurant: %s\n", response);
+    printf("- Received response from restaurant: %s\n", response);
 
     close(res_fd);
     alarm(0);
@@ -234,7 +241,11 @@ void remove_restaurant(char *restaurant_info)
 
     if (!found)
     {
-        printf("Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
+        printf("- Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
+    }
+    else
+    {
+        printf("%s Restaurant closed\n", all_restaurants[restaurants_count - 1].name);
     }
 }
 
@@ -250,6 +261,7 @@ void add_restaurant(char *restaurant_info)
     strcpy(all_restaurants[restaurants_count].port, res_port);
 
     restaurants_count++;
+    printf("%s Restaurant opened\n", all_restaurants[restaurants_count - 1].name);
 }
 
 void broadcast_listen_handler(char *message)
@@ -258,15 +270,11 @@ void broadcast_listen_handler(char *message)
     char *message_info = strtok(NULL, "");
 
     if (strcmp(message_type, "new_restaurant") == 0)
-    {
         add_restaurant(message_info);
-        printf("%s Restaurant opened\n", all_restaurants[restaurants_count - 1].name);
-    }
     else if (strcmp(message_type, "close_restaurant") == 0)
-    {
         remove_restaurant(message_info);
-        printf("%s Restaurant closed\n", all_restaurants[restaurants_count - 1].name);
-    }
+    else
+        printf("- broadcast message received: %s\n\n", message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,7 +365,6 @@ int main(int argc, char const *argv[])
                     }
 
                     printf("client %d: %s\n", i, buffer);
-
                     memset(buffer, 0, 1024);
                 }
             }
