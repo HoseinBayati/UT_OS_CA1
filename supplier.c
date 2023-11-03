@@ -114,28 +114,6 @@ void command_handler(char *username, char *command, char *self_username, char *s
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-// void broadcast_listen_handler(char *message)
-// {
-//     char *message_type = strtok(message, " ");
-//     char *message_info = strtok(NULL, "");
-
-//     if (strcmp(message_type, "new_supplier") == 0)
-//     {
-//         add_supplier(message_info);
-//         printf("%s Supplier added\n", all_suppliers[suppliers_count - 1].name);
-//     }
-//     else if (strcmp(message_type, "close_supplier") == 0)
-//     {
-//         remove_supplier(message_info);
-//         printf("%s Supplier closed\n", all_suppliers[suppliers_count - 1].name);
-//     }
-//     else if (strcmp(message_type, "order food") == 0)
-//         order_food();
-// }
-
-////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////
-
 void sign_in(char *username, char *port)
 {
     printf("Enter you preferred username and port please: ");

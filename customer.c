@@ -53,7 +53,7 @@ int connectServer(int port)
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     if (connect(fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
-    { // checking for errors
+    {
         printf("Error in connecting to server\n");
     }
 
@@ -116,7 +116,7 @@ int show_menu()
         return 1;
     }
 
-    char buff[4096]; // Adjust the buffer size according to your needs
+    char buff[4096];
     memset(buff, 0, sizeof(buff));
     ssize_t bytes_read = read(file_fd, buff, sizeof(buff) - 1);
     if (bytes_read == -1)

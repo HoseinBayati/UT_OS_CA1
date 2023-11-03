@@ -94,7 +94,7 @@ int connectServer(int port)
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     if (connect(fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
-    { // checking for errors
+    { 
         printf("- Error in connecting to server\n");
     }
 
