@@ -427,16 +427,28 @@ void remove_supplier(char *supplier_info)
     }
 }
 
+bool sup_is_duplicate(char *name, char *port)
+{
+    for (int i = 0; i < all_suppliers_length; i++)
+        if (strcmp(all_suppliers[i].name, name) == 0 && strcmp(all_suppliers[i].port, port) == 0)
+            return true;
+
+    return false;
+}
+
 void add_supplier(char *supplier_info)
 {
-    char *res_name = strtok(supplier_info, " ");
-    char *res_port = strtok(NULL, "");
+    char *sup_name = strtok(supplier_info, " ");
+    char *sup_port = strtok(NULL, "");
 
-    all_suppliers[all_suppliers_length].name = malloc(strlen(res_name) + 1);
-    all_suppliers[all_suppliers_length].port = malloc(strlen(res_port) + 1);
+    if (sup_is_duplicate(sup_name, sup_port))
+        return;
 
-    strcpy(all_suppliers[all_suppliers_length].name, res_name);
-    strcpy(all_suppliers[all_suppliers_length].port, res_port);
+    all_suppliers[all_suppliers_length].name = malloc(strlen(sup_name) + 1);
+    all_suppliers[all_suppliers_length].port = malloc(strlen(sup_port) + 1);
+
+    strcpy(all_suppliers[all_suppliers_length].name, sup_name);
+    strcpy(all_suppliers[all_suppliers_length].port, sup_port);
 
     all_suppliers_length++;
     printf("%s Supplier added\n\n", all_suppliers[all_suppliers_length - 1].name);

@@ -19,7 +19,7 @@ typedef struct
     char *port;
 } Restaurant;
 
-int restaurants_count = 0;
+int all_restaurants_length = 0;
 
 Restaurant all_restaurants[100];
 
@@ -119,7 +119,7 @@ void show_restaurants()
     printf("\n--------------------\n");
     printf("username/port\n");
 
-    for (int i = 0; i < restaurants_count; i++)
+    for (int i = 0; i < all_restaurants_length; i++)
     {
         printf("%s %s\n", all_restaurants[i].name, all_restaurants[i].port);
     }
@@ -244,7 +244,7 @@ void remove_restaurant(char *restaurant_info)
     char *res_port = strtok(NULL, "");
 
     int found = 0;
-    for (int i = 0; i < restaurants_count; i++)
+    for (int i = 0; i < all_restaurants_length; i++)
     {
         if (strcmp(all_restaurants[i].name, res_name) == 0 && strcmp(all_restaurants[i].port, res_port) == 0)
         {
@@ -252,9 +252,9 @@ void remove_restaurant(char *restaurant_info)
             free(all_restaurants[i].name);
             free(all_restaurants[i].port);
 
-            all_restaurants[i] = all_restaurants[restaurants_count - 1];
+            all_restaurants[i] = all_restaurants[all_restaurants_length - 1];
 
-            restaurants_count--;
+            all_restaurants_length--;
             break;
         }
     }
@@ -265,8 +265,17 @@ void remove_restaurant(char *restaurant_info)
     }
     else
     {
-        printf("%s Restaurant closed\n\n", all_restaurants[restaurants_count - 1].name);
+        printf("%s Restaurant closed\n\n", all_restaurants[all_restaurants_length - 1].name);
     }
+}
+
+bool res_is_duplicate(char *name, char *port)
+{
+    for (int i = 0; i < all_restaurants_length; i++)
+        if (strcmp(all_restaurants[i].name, name) == 0 && strcmp(all_restaurants[i].port, port) == 0)
+            return true;
+
+    return false;
 }
 
 void add_restaurant(char *restaurant_info)
@@ -274,14 +283,17 @@ void add_restaurant(char *restaurant_info)
     char *res_name = strtok(restaurant_info, " ");
     char *res_port = strtok(NULL, "");
 
-    all_restaurants[restaurants_count].name = malloc(strlen(res_name) + 1);
-    all_restaurants[restaurants_count].port = malloc(strlen(res_port) + 1);
+    if (res_is_duplicate(res_name, res_port))
+        return;
 
-    strcpy(all_restaurants[restaurants_count].name, res_name);
-    strcpy(all_restaurants[restaurants_count].port, res_port);
+    all_restaurants[all_restaurants_length].name = malloc(strlen(res_name) + 1);
+    all_restaurants[all_restaurants_length].port = malloc(strlen(res_port) + 1);
 
-    restaurants_count++;
-    printf("%s Restaurant opened\n\n", all_restaurants[restaurants_count - 1].name);
+    strcpy(all_restaurants[all_restaurants_length].name, res_name);
+    strcpy(all_restaurants[all_restaurants_length].port, res_port);
+
+    all_restaurants_length++;
+    printf("%s Restaurant opened\n\n", all_restaurants[all_restaurants_length - 1].name);
 }
 
 void broadcast_listen_handler(char *message)
