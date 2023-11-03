@@ -124,7 +124,7 @@ void show_restaurants()
         printf("%s %s\n", all_restaurants[i].name, all_restaurants[i].port);
     }
 
-    printf("--------------------\n");
+    printf("--------------------\n\n");
 }
 
 int show_menu()
@@ -178,9 +178,9 @@ void order_food()
 {
     char food_name[50];
     int res_port;
-    printf("restaurant port: ");
+    printf("restaurant port: \n");
     scanf("%d", &res_port);
-    printf("name of food: ");
+    printf("name of food: \n");
     scanf("%s", food_name);
 
     char message_to_restaurant[1024];
@@ -196,7 +196,7 @@ void order_food()
     struct sockaddr_in server_addr;
 
     signal(SIGALRM, timeout_handler);
-    alarm(12);
+    alarm(120);
 
     res_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (res_fd == -1)
@@ -217,9 +217,9 @@ void order_food()
     }
 
     send(res_fd, message_to_restaurant, strlen(message_to_restaurant), 0);
-    char response[1024];
+    char response[1024] = {0};
     recv(res_fd, response, sizeof(response), 0);
-    printf("- Received response from restaurant: %s\n", response);
+    printf("- Received response from restaurant: %s\n\n", response);
 
     close(res_fd);
     alarm(0);
@@ -261,11 +261,11 @@ void remove_restaurant(char *restaurant_info)
 
     if (!found)
     {
-        printf("- Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
+        printf("- Restaurant '%s' with port '%s' not found.\n\n", res_name, res_port);
     }
     else
     {
-        printf("%s Restaurant closed\n", all_restaurants[restaurants_count - 1].name);
+        printf("%s Restaurant closed\n\n", all_restaurants[restaurants_count - 1].name);
     }
 }
 
@@ -281,7 +281,7 @@ void add_restaurant(char *restaurant_info)
     strcpy(all_restaurants[restaurants_count].port, res_port);
 
     restaurants_count++;
-    printf("%s Restaurant opened\n", all_restaurants[restaurants_count - 1].name);
+    printf("%s Restaurant opened\n\n", all_restaurants[restaurants_count - 1].name);
 }
 
 void broadcast_listen_handler(char *message)
@@ -302,7 +302,7 @@ void broadcast_listen_handler(char *message)
 
 void sign_in(char *username, char *port)
 {
-    printf("Enter you preferred username and port please: ");
+    printf("Enter you preferred username and port please: \n");
     scanf("%s %s", username, port);
 }
 
@@ -318,7 +318,7 @@ bool request_restaurants_list()
 
 void say_welcome()
 {
-    char *welcome_message = "Welcome! You're all set.\n";
+    char *welcome_message = "Welcome! You're all set.\n\n";
     write(1, welcome_message, strlen(welcome_message));
 }
 
@@ -364,7 +364,7 @@ int main(int argc, char const *argv[])
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
                         max_sd = new_socket;
-                    printf("New client connected. fd = %d\n", new_socket);
+                    printf("New client connected. fd = %d\n\n", new_socket);
                 }
                 if (i == STDIN_FILENO)
                 {
@@ -388,13 +388,13 @@ int main(int argc, char const *argv[])
 
                     if (bytes_received == 0)
                     {
-                        printf("client fd = %d closed\n", i);
+                        printf("client fd = %d closed\n\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
                         continue;
                     }
 
-                    printf("client %d: %s\n", i, buffer);
+                    printf("client %d: %s\n\n", i, buffer);
                     memset(buffer, 0, 1024);
                 }
             }

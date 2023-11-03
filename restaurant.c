@@ -95,7 +95,7 @@ int connectServer(int port)
 
     if (connect(fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     {
-        printf("- Error in connecting to server\n");
+        printf("- Error in connecting to server\n\n");
     }
 
     return fd;
@@ -169,7 +169,7 @@ int show_recipes()
     int file_fd = open("recipes.json", O_RDONLY);
     if (file_fd == -1)
     {
-        fprintf(stderr, "Error opening JSON file\n");
+        fprintf(stderr, "Error opening JSON file\n\n");
         return 1;
     }
 
@@ -178,7 +178,7 @@ int show_recipes()
     ssize_t bytes_read = read(file_fd, buff, sizeof(buff) - 1);
     if (bytes_read == -1)
     {
-        fprintf(stderr, "Error reading from JSON file\n");
+        fprintf(stderr, "Error reading from JSON file\n\n");
         close(file_fd);
         return 1;
     }
@@ -216,7 +216,7 @@ void show_ingredients()
         printf("%s %s\n", all_ingredients[i].name, all_ingredients[i].amount);
     }
 
-    printf("--------------------\n");
+    printf("--------------------\n\n");
 }
 void show_suppliers()
 {
@@ -228,12 +228,12 @@ void show_suppliers()
         printf("%s %s\n", all_suppliers[i].name, all_suppliers[i].port);
     }
 
-    printf("--------------------\n");
+    printf("--------------------\n\n");
 }
 
 void timeout_handler(int signum)
 {
-    printf("- no response from the supplier. connection timeout.\n");
+    printf("- no response from the supplier. connection timeout.\n\n");
 }
 void request_ingredient()
 {
@@ -261,7 +261,7 @@ void request_ingredient()
     struct sockaddr_in server_addr;
 
     signal(SIGALRM, timeout_handler);
-    alarm(9);
+    alarm(90);
 
     sup_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (sup_fd == -1)
@@ -284,7 +284,7 @@ void request_ingredient()
     send(sup_fd, message_to_supplier, strlen(message_to_supplier), 0);
     char response[1024];
     recv(sup_fd, response, sizeof(response), 0);
-    printf("- Received response from supplier: %s\n", response);
+    printf("- Received response from supplier: %s\n\n", response);
 
     close(sup_fd);
     alarm(0);
@@ -300,12 +300,52 @@ void show_requests()
         printf("%s %d\n", all_orders[i].food_name, all_orders[i].customer_fd);
     }
 
-    printf("--------------------\n");
+    printf("--------------------\n\n");
+}
+
+void remove_order(int customer_fd)
+{
+    int found = 0;
+    for (int i = 0; i < all_orders_length; i++)
+    {
+        if (all_orders[i].customer_fd == customer_fd)
+        {
+            found = 1;
+            free(all_orders[i].food_name);
+
+            all_orders[i] = all_orders[all_orders_length - 1];
+
+            all_orders_length--;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        printf("- orders from customer: '%d' not found.\n\n", customer_fd);
+    }
+    else
+    {
+        printf("%d removed from orders\n\n", all_orders[all_orders_length - 1].customer_fd);
+    }
 }
 
 void answer_request()
 {
-    printf("answer request\n");
+    int customer_fd;
+    char answer[3];
+
+    printf("customer fd? \n");
+    scanf("%d", &customer_fd);
+    printf("your answer ? \n");
+    scanf("%s", answer);
+
+    send(customer_fd, answer, strlen(answer), 0);
+
+    if (strcmp(answer, "yes") == 0)
+    {
+        remove_order(customer_fd);
+    }
 }
 
 void show_sales_history()
@@ -379,11 +419,11 @@ void remove_supplier(char *supplier_info)
 
     if (!found)
     {
-        printf("- Restaurant '%s' with port '%s' not found.\n", res_name, res_port);
+        printf("- Restaurant '%s' with port '%s' not found.\n\n", res_name, res_port);
     }
     else
     {
-        printf("%s removed from suppliers\n", all_suppliers[all_suppliers_length - 1].name);
+        printf("%s removed from suppliers\n\n", all_suppliers[all_suppliers_length - 1].name);
     }
 }
 
@@ -399,7 +439,7 @@ void add_supplier(char *supplier_info)
     strcpy(all_suppliers[all_suppliers_length].port, res_port);
 
     all_suppliers_length++;
-    printf("%s Supplier added\n", all_suppliers[all_suppliers_length - 1].name);
+    printf("%s Supplier added\n\n", all_suppliers[all_suppliers_length - 1].name);
 }
 
 void announce_working(char *self_server_port, char *self_username)
@@ -454,7 +494,7 @@ void order_food_handler(char *order_info, int client_fd)
     char *food_name = strtok(order_info, "");
 
     add_order(food_name, client_fd);
-    printf("- added order: %s, from customer: %d, to orders queue\n", all_orders[all_orders_length - 1].food_name, all_orders[all_orders_length - 1].customer_fd);
+    printf("- added order: %s, from customer: %d, to orders queue\n\n", all_orders[all_orders_length - 1].food_name, all_orders[all_orders_length - 1].customer_fd);
 }
 
 void request_handler(int client_fd, char *message)
@@ -479,7 +519,7 @@ void sign_in(char *username, char *port)
 
 void say_welcome()
 {
-    char *welcome_message = "Welcome! You're all set.\n";
+    char *welcome_message = "Welcome! You're all set.\n\n";
     write(1, welcome_message, strlen(welcome_message));
 }
 
@@ -527,7 +567,7 @@ int main(int argc, char const *argv[])
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
                         max_sd = new_socket;
-                    printf("- New client connected. fd = %d\n", new_socket);
+                    printf("- New client connected. fd = %d\n\n", new_socket);
                 }
                 else if (i == STDIN_FILENO)
                 {
@@ -553,12 +593,12 @@ int main(int argc, char const *argv[])
 
                     if (bytes_received == 0)
                     {
-                        printf("client fd = %d closed\n", i);
+                        printf("client fd = %d closed\n\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
                         continue;
                     }
-                    printf("client %d: %s\n", i, request_buffer);
+                    printf("client %d: %s\n\n", i, request_buffer);
                     if (bytes_received > 0)
                         request_handler(i, request_buffer);
                     memset(request_buffer, 0, 1024);

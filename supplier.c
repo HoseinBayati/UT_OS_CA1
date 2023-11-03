@@ -92,18 +92,18 @@ bool stop_working(char *self_server_port, char *self_username)
 
 void answer_request()
 {
-    printf("answer request\n");
+    printf("answer request\n\n");
 }
 
 void command_handler(char *username, char *command, char *self_username, char *self_server_port, bool *working)
 {
-    if (strcmp(command, "start working\n") == 0)
+    if (strcmp(command, "start working\n\n") == 0)
         *working = start_working(self_server_port, self_username);
     else if (*working)
     {
-        if (strcmp(command, "break\n") == 0)
+        if (strcmp(command, "break\n\n") == 0)
             *working = stop_working(self_server_port, self_username);
-        else if (strcmp(command, "answer request\n") == 0)
+        else if (strcmp(command, "answer request\n\n") == 0)
             answer_request();
     }
     else
@@ -116,13 +116,13 @@ void command_handler(char *username, char *command, char *self_username, char *s
 
 void sign_in(char *username, char *port)
 {
-    printf("Enter you preferred username and port please: ");
+    printf("Enter you preferred username and port please: \n");
     scanf("%s %s", username, port);
 }
 
 void say_welcome()
 {
-    char *welcome_message = "Welcome! You're all set.\n";
+    char *welcome_message = "Welcome! You're all set.\n\n";
     write(1, welcome_message, strlen(welcome_message));
 }
 
@@ -167,7 +167,7 @@ int main(int argc, char const *argv[])
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
                         max_sd = new_socket;
-                    printf("New client connected. fd = %d\n", new_socket);
+                    printf("New client connected. fd = %d\n\n", new_socket);
                 }
                 else if (i == STDIN_FILENO)
                 {
@@ -184,13 +184,13 @@ int main(int argc, char const *argv[])
 
                     if (bytes_received == 0)
                     {
-                        printf("client fd = %d closed\n", i);
+                        printf("client fd = %d closed\n\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
                         continue;
                     }
 
-                    printf("client %d: %s\n", i, buffer);
+                    printf("client %d: %s\n\n", i, buffer);
                     memset(buffer, 0, 1024);
                 }
             }
