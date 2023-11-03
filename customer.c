@@ -97,11 +97,11 @@ int acceptClient(int server_fd)
 void show_restaurants()
 {
     printf("\n--------------------\n");
-    printf("username - port\n");
+    printf("username/port\n");
 
     for (int i = 0; i < restaurants_count; i++)
     {
-        printf("%s - %s\n", all_restaurants[i].name, all_restaurants[i].port);
+        printf("%s %s\n", all_restaurants[i].name, all_restaurants[i].port);
     }
 
     printf("--------------------\n");
@@ -163,15 +163,13 @@ void order_food()
     printf("restaurant port: ");
     scanf("%d", &res_port);
 
-    printf("food name: %s, restaurant port: %d\n", food_name, res_port);
-
     printf("waiting for the restaurant's response\n");
 
     int res_fd;
     struct sockaddr_in server_addr;
 
     signal(SIGALRM, timeout_handler);
-    alarm(120);
+    alarm(12);
 
     res_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (res_fd == -1)
@@ -300,7 +298,6 @@ int main(int argc, char const *argv[])
 
     fd_set master_set, working_set;
 
-    // set up the current server for the customers to connect
     self_server_fd = setupServer(atoi(self_server_port));
 
     FD_ZERO(&master_set);
@@ -314,9 +311,6 @@ int main(int argc, char const *argv[])
 
     say_welcome();
 
-    // set up broadcast  -  announce to everyone that there is a new restaurant
-    // int broad_sock = broadcast_to_customers();
-
     while (1)
     {
         working_set = master_set;
@@ -327,7 +321,7 @@ int main(int argc, char const *argv[])
             if (FD_ISSET(i, &working_set))
             {
                 if (i == self_server_fd)
-                { // handle new client wanting to connect to restaurant server
+                {
                     new_socket = acceptClient(self_server_fd);
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
@@ -350,12 +344,12 @@ int main(int argc, char const *argv[])
                     memset(broadcast_listen_message, 0, 1024);
                 }
                 else
-                { // handle a client sending message
+                {
                     int bytes_received;
                     bytes_received = recv(i, buffer, 1024, 0);
 
                     if (bytes_received == 0)
-                    { // EOF
+                    {
                         printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);

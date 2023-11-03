@@ -64,7 +64,6 @@ int acceptClient(int server_fd)
 
 bool start_working(char *self_server_port, char *self_username)
 {
-    printf("sup start working.\n");
     char message[1024];
     char *message_type = "new_supplier";
     strcpy(message, message_type);
@@ -170,7 +169,6 @@ int main(int argc, char const *argv[])
     FD_SET(self_server_fd, &master_set);
     FD_SET(STDIN_FILENO, &master_set);
 
-    // set up broadcast  -  announce to everyone that there is a new supplier
     bool working = false;
 
     say_welcome();
@@ -186,7 +184,7 @@ int main(int argc, char const *argv[])
             {
 
                 if (i == self_server_fd)
-                { // new clinet
+                {
                     new_socket = acceptClient(self_server_fd);
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
@@ -194,7 +192,7 @@ int main(int argc, char const *argv[])
                     printf("New client connected. fd = %d\n", new_socket);
                 }
                 if (i == STDIN_FILENO)
-                { // handle an input from the command line (like sending it to a supplier or anything)
+                {
                     char std_in_buffer[1024];
                     fgets(std_in_buffer, sizeof(std_in_buffer), stdin);
                     char *command = std_in_buffer;
@@ -202,12 +200,12 @@ int main(int argc, char const *argv[])
                     memset(std_in_buffer, 0, 1024);
                 }
                 else
-                { // client sending msg
+                {
                     int bytes_received;
                     bytes_received = recv(i, buffer, 1024, 0);
 
                     if (bytes_received == 0)
-                    { // EOF
+                    {
                         printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
