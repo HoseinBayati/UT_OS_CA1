@@ -10,7 +10,8 @@
         "unistd.h": "c",
         "jansson.h": "c",
         "typeinfo": "c",
-        "random": "c"
+        "random": "c",
+        "stdbool.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

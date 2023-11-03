@@ -255,6 +255,12 @@ void sign_in(char *username, char *port)
     scanf("%s %s", username, port);
 }
 
+void say_welcome()
+{
+    char *welcome_message = "Welcome! You're all set.\n";
+    write(1, welcome_message, strlen(welcome_message));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -281,8 +287,7 @@ int main(int argc, char const *argv[])
 
     max_sd = broadcast_listen_fd;
 
-    char *welcome_message = "Welcome! You're all set.\n";
-    write(1, welcome_message, strlen(welcome_message));
+    say_welcome();
 
     // set up broadcast  -  announce to everyone that there is a new restaurant
     // int broad_sock = broadcast_to_customers();

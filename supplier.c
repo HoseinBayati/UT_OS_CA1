@@ -21,7 +21,7 @@ void broadcast_to_restaurants()
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     bc_address.sin_family = AF_INET;
-    bc_address.sin_port = htons(8000);
+    bc_address.sin_port = htons(8080);
     bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
@@ -84,8 +84,13 @@ void command_detector(char *username, char *command)
 void sign_in(char *username, char *port)
 {
     printf("Enter you preferred username and port please: ");
-    scanf("%s", username);
-    scanf("%s", port);
+    scanf("%s %s", username, port);
+}
+
+void say_welcome()
+{
+    char *welcome_message = "Welcome! You're all set.\n";
+    write(1, welcome_message, strlen(welcome_message));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,25 +99,25 @@ void sign_in(char *username, char *port)
 
 int main(int argc, char const *argv[])
 {
-    char *username;
-    char *port;
+    char username[50];
+    char port[50];
     sign_in(username, port);
 
-    int server_fd, new_socket, max_sd;
+    int self_server_fd, new_socket, max_sd;
     char buffer[1024] = {0};
     fd_set master_set, working_set;
 
-    server_fd = setupServer(port);
+    self_server_fd = setupServer(atoi(port));
 
     FD_ZERO(&master_set);
-    max_sd = server_fd;
-    FD_SET(server_fd, &master_set);
+    max_sd = self_server_fd;
+    FD_SET(self_server_fd, &master_set);
     FD_SET(STDIN_FILENO, &master_set);
-
-    write(1, "Server is running\n", 18);
 
     // set up broadcast  -  announce to everyone that there is a new supplier
     broadcast_to_restaurants();
+
+    say_welcome();
 
     while (1)
     {
@@ -124,9 +129,9 @@ int main(int argc, char const *argv[])
             if (FD_ISSET(i, &working_set))
             {
 
-                if (i == server_fd)
+                if (i == self_server_fd)
                 { // new clinet
-                    new_socket = acceptClient(server_fd);
+                    new_socket = acceptClient(self_server_fd);
                     FD_SET(new_socket, &master_set);
                     if (new_socket > max_sd)
                         max_sd = new_socket;

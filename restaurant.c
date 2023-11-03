@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <stdbool.h>
+#include <json-c/json.h>
 
 int broadcast_start_working()
 {
@@ -49,7 +50,7 @@ int listen_to_broadcasts()
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     bc_address.sin_family = AF_INET;
-    bc_address.sin_port = htons(3001);
+    bc_address.sin_port = htons(8080);
     bc_address.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
@@ -123,9 +124,48 @@ void show_ingredients()
 {
     printf("show ingredients\n");
 }
-void show_recipes()
+int show_recipes()
 {
-    printf("show recipes\n");
+    int file_fd = open("recipes.json", O_RDONLY);
+    if (file_fd == -1)
+    {
+        fprintf(stderr, "Error opening JSON file\n");
+        return 1;
+    }
+
+    char buff[4096]; // Adjust the buffer size according to your needs
+    memset(buff, 0, sizeof(buff));
+    ssize_t bytes_read = read(file_fd, buff, sizeof(buff) - 1);
+    if (bytes_read == -1)
+    {
+        fprintf(stderr, "Error reading from JSON file\n");
+        close(file_fd);
+        return 1;
+    }
+
+    close(file_fd);
+
+    struct json_object *parsed_json = json_tokener_parse(buff);
+
+    int i = 0;
+    json_object_object_foreach(parsed_json, recipe_name, recipe_obj)
+    {
+        printf("%d- %s\n", i, recipe_name);
+        i++;
+        struct json_object *ingredients_obj;
+        json_object_object_get_ex(parsed_json, recipe_name, &ingredients_obj);
+
+        json_object_object_foreach(ingredients_obj, ingredient_name, quantity_obj)
+        {
+            int quantity = json_object_get_int(quantity_obj);
+            // printf("%s: %d\n", ingredient_name, quantity);
+        }
+        // printf("\n");
+    }
+
+    json_object_put(parsed_json);
+
+    return 0;
 }
 void show_suppliers()
 {
@@ -181,6 +221,12 @@ void sign_in(char *username, char *port)
     scanf("%s %s", username, port);
 }
 
+void say_welcome()
+{
+    char *welcome_message = "Welcome! You're all set.\n";
+    write(1, welcome_message, strlen(welcome_message));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,17 +243,13 @@ int main(int argc, char const *argv[])
     fd_set master_set, working_set;
 
     // connect to a supplier  -  connect to the target server
-    supplier_fd = connectServer(3000);
+    supplier_fd = connectServer(3001);
     // set up the current server for the customers to connect
-    // self_server_fd = setupServer(atoi(port));
-    self_server_fd = 10;
+    self_server_fd = setupServer(atoi(port));
 
     FD_ZERO(&master_set);
-    max_sd = self_server_fd;
-    // FD_SET(self_server_fd, &master_set);
+    FD_SET(self_server_fd, &master_set);
     FD_SET(STDIN_FILENO, &master_set);
-
-    write(1, "Server is running\n", 18);
 
     // set up broadcast  -  announce to everyone that there is a new restaurant
     // int broad_sock = broadcast_to_customers();
@@ -217,6 +259,9 @@ int main(int argc, char const *argv[])
     int suppliers_sock = listen_to_broadcasts();
     FD_SET(suppliers_sock, &master_set);
     ////////////////////////////////////////
+    max_sd = suppliers_sock;
+
+    say_welcome();
 
     while (1)
     {
